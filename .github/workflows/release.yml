@@ -28,7 +28,9 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
+          # Why no cache: npm says never to use a cache in a release build. A poisoned cache would
+          # run in the job that can publish.
+          package-manager-cache: false
 
       - name: Install Dependencies 📥
         run: pnpm install --frozen-lockfile

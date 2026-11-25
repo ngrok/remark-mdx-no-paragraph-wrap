@@ -57,6 +57,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          # Why the ls-files check: when a PR deletes mise.lock, `mise lock` makes an untracked file,
+          # and `git diff` does not see it.
+          git ls-files --error-unmatch mise.lock
           mise trust ./mise.toml
           mise lock
           if ! git diff --exit-code mise.lock; then
