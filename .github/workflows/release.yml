@@ -10,10 +10,10 @@ permissions:
   pull-requests: write
 
 # Why: two runs at once can each force-push the version PR, and the older run can land last.
-# Queue the runs, and never cancel a publish in progress.
+# Why `queue: max`: by default a new run replaces a pending one, which can drop a pending publish.
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  queue: max
 
 env:
   DO_NOT_TRACK: 1

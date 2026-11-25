@@ -1,4 +1,5 @@
-import type { Root } from "mdast";
+import type { Root, RootContent } from "mdast";
+import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { compile } from "@mdx-js/mdx";
 import { describe, expect, it } from "vitest";
 
@@ -74,37 +75,41 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain(String.raw`<Foo>{"One"}{"\n"}{"Two"}</Foo>`);
 	});
 
-	it("separate paragraphs: reads the source when an expression has no ESTree", async () => {
-		// Why: `remark-mdx` with `addResult: false` leaves out the ESTree in the same way.
-		function dropEstree() {
-			return (tree: Root): void => {
-				const foo = tree.children[0];
-				if (foo?.type === "mdxJsxFlowElement") {
-					for (const child of foo.children) {
-						if (child.type === "mdxFlowExpression") {
-							delete child.data;
-						}
-					}
-				}
-			};
-		}
-		async function compileWithoutEstree(expression: string) {
-			const input = `<Foo>\n\nOne\n\n{${expression}}\n\nTwo\n\n</Foo>`;
-			const result = await compile(input, {
-				jsx: true,
-				remarkPlugins: [dropEstree, remarkMdxNoParagraphWrap],
+	it("separate paragraphs: reads the source of an expression with no ESTree, and skips frontmatter", () => {
+		// Why a tree, not a compile: `remark-mdx` with `addResult: false` leaves out the ESTree, and
+		// `remark-frontmatter` adds `yaml` and `toml` nodes. Neither plugin is a dependency.
+		function transform(between: RootContent): RootContent[] {
+			const paragraph = (value: string): RootContent => ({
+				type: "paragraph",
+				children: [{ type: "text", value }],
 			});
-			return String(result);
+			const foo: MdxJsxFlowElement = {
+				type: "mdxJsxFlowElement",
+				name: "Foo",
+				attributes: [],
+				// Why the cast: frontmatter is not flow content in the mdast types, but a plugin can put it here.
+				children: [paragraph("One"), between, paragraph("Two")] as MdxJsxFlowElement["children"],
+			};
+			const tree: Root = { type: "root", children: [foo] };
+			remarkMdxNoParagraphWrap()(tree);
+			return foo.children;
 		}
+		const comment: RootContent = { type: "mdxFlowExpression", value: "/* note */" };
+		const valueInComments: RootContent = {
+			type: "mdxFlowExpression",
+			value: `/* a */ "X" /* b */`,
+		};
+		const yaml: RootContent = { type: "yaml", value: "k: v" };
+		// Why the cast: mdast does not type `toml`.
+		const toml = { type: "toml", value: "k = 1" } as unknown as RootContent;
+		const text = (value: string) => ({ type: "text", value });
 
-		// A comment renders nothing, so the break stays.
-		await expect(compileWithoutEstree("/* note */")).resolves.toContain(
-			String.raw`{"One"}{}{"\n"}{"Two"}`,
-		);
+		// A comment or frontmatter renders nothing, so the break stays.
+		for (const between of [comment, yaml, toml]) {
+			expect(transform(between)).toStrictEqual([text("One"), between, text("\n"), text("Two")]);
+		}
 		// A value between two comments renders, so it is the break.
-		await expect(compileWithoutEstree(`/* a */ "X" /* b */`)).resolves.toContain(
-			String.raw`{"One"}{}{"Two"}`,
-		);
+		expect(transform(valueInComments)).toStrictEqual([text("One"), valueInComments, text("Two")]);
 	});
 
 	it("blocks in JSX: unwraps paragraphs in a blockquote and a list, and keeps prose outside", async () => {

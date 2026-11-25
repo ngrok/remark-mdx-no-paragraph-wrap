@@ -74,15 +74,21 @@ const onlyComments =
 	/^(?:\s|\/\*(?:[^*]|\*(?!\/))*\*\/|\/\/[^\n\r\u2028\u2029]*(?=[\n\r\u2028\u2029]|$))*$/u;
 
 /**
- * Check if a node renders nothing in place: a definition, an `import` or `export`, or an
- * expression that holds only a comment.
+ * Check if a node renders nothing in place: a definition, an `import` or `export`, frontmatter, or
+ * an expression that holds only a comment.
  */
 function rendersNothing(node: RootContent): boolean {
+	// Why a string check: `toml` comes from `remark-frontmatter`, and mdast does not type it.
+	if ((node.type as string) === "toml") {
+		return true;
+	}
 	switch (node.type) {
-		// Why `mdxjsEsm`: MDX hoists an `import` or `export` out of the rendered children.
+		// Why `mdxjsEsm`: MDX hoists an `import` or `export` out of the rendered children. Why
+		// `yaml`: `remark-frontmatter` can find frontmatter anywhere, and MDX does not render it.
 		case "definition":
 		case "footnoteDefinition":
-		case "mdxjsEsm": {
+		case "mdxjsEsm":
+		case "yaml": {
 			return true;
 		}
 		case "mdxFlowExpression": {
