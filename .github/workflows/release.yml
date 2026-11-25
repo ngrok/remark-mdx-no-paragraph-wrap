@@ -25,13 +25,29 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      # Why: Changesets builds the version PR from this run's commit and force-pushes it. A retry
+      # of an old run would drop the changesets that main added since. The run for the newest
+      # commit of main does the whole job, publish too, so an older run can stop.
+      - name: Skip when main has moved on ⏭️
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)
+          if [ "${head}" != "${GITHUB_SHA}" ]; then
+            echo "::notice::main is at ${head}, not ${GITHUB_SHA}. The newer run releases."
+            echo "stale=true" >> "${GITHUB_OUTPUT}"
+          fi
+
       # Use pnpm version from root package.json#packageManager
       - name: Install pnpm 📦
+        if: steps.current.outputs.stale != 'true'
         uses: pnpm/action-setup@v6.1.1
         with:
           run_install: false
 
       - uses: actions/setup-node@v7.1.0
+        if: steps.current.outputs.stale != 'true'
         with:
           node-version-file: ".nvmrc"
           # Why no cache: npm says never to use a cache in a release build. A poisoned cache would
@@ -39,9 +55,11 @@ jobs:
           package-manager-cache: false
 
       - name: Install Dependencies 📥
+        if: steps.current.outputs.stale != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build 🏗️
+        if: steps.current.outputs.stale != 'true'
         run: pnpm run build
 
       # Publish uses npm trusted publishing (OIDC), not a token. The trusted
@@ -49,6 +67,7 @@ jobs:
       # release.yml. npm adds provenance on its own. Why no token: a stale token
       # makes a failed OIDC exchange fall back to it, and npm then reports a 404.
       - name: Create Release Pull Request or Publish to npm
+        if: steps.current.outputs.stale != 'true'
         id: changesets
         uses: changesets/action@v2.1.2
         with:

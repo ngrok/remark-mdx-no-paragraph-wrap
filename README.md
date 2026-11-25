@@ -83,7 +83,7 @@ The plugin operates at the **mdast (Markdown AST)** level, running as a remark t
 
 1. **Walk the tree** — visits each node one time.
 2. **Find JSX elements** — looks for `mdxJsxFlowElement` and `mdxJsxTextElement` nodes.
-3. **Unwrap paragraphs** — inside a JSX element, at any depth, replaces each `paragraph` node with its own children. Between two adjacent paragraphs, it keeps a newline, so their text does not run together.
+3. **Unwrap paragraphs** — inside a JSX element, at any depth, replaces each `paragraph` node with its own children. Before each paragraph after the first in a JSX element, it puts a newline, so their text does not run together.
 
 Normal markdown prose outside JSX elements is unaffected.
 

@@ -68,6 +68,27 @@ jobs:
             exit 1
           fi
 
+  # Why here, not in its own workflow: main requires only the vibe-check job, so this check must
+  # gate it. A stale lockfile otherwise fails only when release.yml first runs on main.
+  actions-lock-check:
+    name: Actions Lockfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install gh-actions-lock 🔧
+        run: gh extension install github/gh-actions-lock --pin v0.5.1
+
+      - name: Verify actions.lock is complete and current 🔒
+        run: gh actions-lock --verify --fail-on-warning
+
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -117,18 +138,21 @@ jobs:
     timeout-minutes: 5
     needs:
       - mise-lock-check
+      - actions-lock-check
       - checks
     if: ${{ always() && !cancelled() }}
     steps:
       - name: Verify all vibe check jobs passed
         env:
           MISE_LOCK_CHECK_RESULT: ${{ needs.mise-lock-check.result }}
+          ACTIONS_LOCK_CHECK_RESULT: ${{ needs.actions-lock-check.result }}
           CHECKS_RESULT: ${{ needs.checks.result }}
         run: |
           echo "mise-lock-check: $MISE_LOCK_CHECK_RESULT"
+          echo "actions-lock-check: $ACTIONS_LOCK_CHECK_RESULT"
           echo "checks: $CHECKS_RESULT"
 
-          if [[ "$MISE_LOCK_CHECK_RESULT" != "success" || "$CHECKS_RESULT" != "success" ]]; then
+          if [[ "$MISE_LOCK_CHECK_RESULT" != "success" || "$ACTIONS_LOCK_CHECK_RESULT" != "success" || "$CHECKS_RESULT" != "success" ]]; then
             echo "One or more vibe check jobs did not succeed."
             exit 1
           fi

@@ -1,5 +1,3 @@
-import type { Root, RootContent } from "mdast";
-import type { MdxJsxFlowElement } from "mdast-util-mdx-jsx";
 import { compile } from "@mdx-js/mdx";
 import { describe, expect, it } from "vitest";
 
@@ -75,41 +73,13 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain(String.raw`<Foo>{"One"}{"\n"}{"Two"}</Foo>`);
 	});
 
-	it("separate paragraphs: reads the source of an expression with no ESTree, and skips frontmatter", () => {
-		// Why a tree, not a compile: `remark-mdx` with `addResult: false` leaves out the ESTree, and
-		// `remark-frontmatter` adds `yaml` and `toml` nodes. Neither plugin is a dependency.
-		function transform(between: RootContent): RootContent[] {
-			const paragraph = (value: string): RootContent => ({
-				type: "paragraph",
-				children: [{ type: "text", value }],
-			});
-			const foo: MdxJsxFlowElement = {
-				type: "mdxJsxFlowElement",
-				name: "Foo",
-				attributes: [],
-				// Why the cast: frontmatter is not flow content in the mdast types, but a plugin can put it here.
-				children: [paragraph("One"), between, paragraph("Two")] as MdxJsxFlowElement["children"],
-			};
-			const tree: Root = { type: "root", children: [foo] };
-			remarkMdxNoParagraphWrap()(tree);
-			return foo.children;
-		}
-		const comment: RootContent = { type: "mdxFlowExpression", value: "/* note */" };
-		const valueInComments: RootContent = {
-			type: "mdxFlowExpression",
-			value: `/* a */ "X" /* b */`,
-		};
-		const yaml: RootContent = { type: "yaml", value: "k: v" };
-		// Why the cast: mdast does not type `toml`.
-		const toml = { type: "toml", value: "k = 1" } as unknown as RootContent;
-		const text = (value: string) => ({ type: "text", value });
+	it("separate paragraphs: keeps the break across a node that renders", async () => {
+		const input = `<Foo>\n\nOne\n\n<></>\n\nTwo\n\n<Inner />\n\nThree\n\n</Foo>`;
+		const output = await compileWithPlugin(input);
 
-		// A comment or frontmatter renders nothing, so the break stays.
-		for (const between of [comment, yaml, toml]) {
-			expect(transform(between)).toStrictEqual([text("One"), between, text("\n"), text("Two")]);
-		}
-		// A value between two comments renders, so it is the break.
-		expect(transform(valueInComments)).toStrictEqual([text("One"), valueInComments, text("Two")]);
+		expect(output).toContain(
+			String.raw`<Foo>{"One"}<></>{"\n"}{"Two"}<Inner />{"\n"}{"Three"}</Foo>`,
+		);
 	});
 
 	it("blocks in JSX: unwraps paragraphs in a blockquote and a list, and keeps prose outside", async () => {

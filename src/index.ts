@@ -44,7 +44,7 @@ function unwrapParagraphs(node: Parent, insideJsx: boolean): void {
 
 /**
  * Copy a list of nodes, with each paragraph replaced by its children. With `separate`, put a
- * newline between the text of two paragraphs.
+ * newline before the text of each paragraph after the first.
  */
 function withoutParagraphs(children: RootContent[], separate: boolean): RootContent[] {
 	const result: RootContent[] = [];
@@ -52,7 +52,8 @@ function withoutParagraphs(children: RootContent[], separate: boolean): RootCont
 	for (const child of children) {
 		if (isParagraph(child)) {
 			// Why the separator: the break between two paragraphs is the only space between their text.
-			// Without it, the text runs together, as in "OneTwo".
+			// Without it, the text runs together, as in "OneTwo". Why also across other nodes: many
+			// render nothing, such as a comment, an empty fragment, or a component that returns null.
 			if (separate && afterParagraph) {
 				result.push({ type: "text", value: "\n" });
 			}
@@ -60,47 +61,9 @@ function withoutParagraphs(children: RootContent[], separate: boolean): RootCont
 			afterParagraph = true;
 		} else {
 			result.push(child);
-			afterParagraph &&= rendersNothing(child);
 		}
 	}
 	return result;
-}
-
-// Matches source text made of only comments and white space, such as `/* note */`. Why
-// `(?:[^*]|\*(?!\/))`: a block comment cannot match past its first `*/`, so a value between two
-// comments does not count as a comment. Why the lookahead: a line comment runs to its line end, so
-// the match cannot split white space between `\s` and the comment, which backtracks.
-const onlyComments =
-	/^(?:\s|\/\*(?:[^*]|\*(?!\/))*\*\/|\/\/[^\n\r\u2028\u2029]*(?=[\n\r\u2028\u2029]|$))*$/u;
-
-/**
- * Check if a node renders nothing in place: a definition, an `import` or `export`, frontmatter, or
- * an expression that holds only a comment.
- */
-function rendersNothing(node: RootContent): boolean {
-	// Why a string check: `toml` comes from `remark-frontmatter`, and mdast does not type it.
-	if ((node.type as string) === "toml") {
-		return true;
-	}
-	switch (node.type) {
-		// Why `mdxjsEsm`: MDX hoists an `import` or `export` out of the rendered children. Why
-		// `yaml`: `remark-frontmatter` can find frontmatter anywhere, and MDX does not render it.
-		case "definition":
-		case "footnoteDefinition":
-		case "mdxjsEsm":
-		case "yaml": {
-			return true;
-		}
-		case "mdxFlowExpression": {
-			// Why the fallback: `remark-mdx` with `addResult: false`, or another plugin, can leave out
-			// the ESTree. Then read the source text.
-			const estree = node.data?.estree;
-			return estree == null ? onlyComments.test(node.value) : estree.body.length === 0;
-		}
-		default: {
-			return false;
-		}
-	}
 }
 
 /**
