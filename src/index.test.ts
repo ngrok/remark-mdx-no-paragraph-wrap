@@ -74,8 +74,7 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain(String.raw`<Foo>{"One"}{"\n"}{"Two"}</Foo>`);
 	});
 
-	it("separate paragraphs: keeps the break across a comment with no ESTree", async () => {
-		const input = `<Foo>\n\nOne\n\n{/* note */}\n\nTwo\n\n</Foo>`;
+	it("separate paragraphs: reads the source when an expression has no ESTree", async () => {
 		// Why: `remark-mdx` with `addResult: false` leaves out the ESTree in the same way.
 		function dropEstree() {
 			return (tree: Root): void => {
@@ -89,11 +88,23 @@ describe("remarkMdxNoParagraphWrap", () => {
 				}
 			};
 		}
-		const output = String(
-			await compile(input, { jsx: true, remarkPlugins: [dropEstree, remarkMdxNoParagraphWrap] }),
-		);
+		async function compileWithoutEstree(expression: string) {
+			const input = `<Foo>\n\nOne\n\n{${expression}}\n\nTwo\n\n</Foo>`;
+			const result = await compile(input, {
+				jsx: true,
+				remarkPlugins: [dropEstree, remarkMdxNoParagraphWrap],
+			});
+			return String(result);
+		}
 
-		expect(output).toContain(String.raw`{"One"}{}{"\n"}{"Two"}`);
+		// A comment renders nothing, so the break stays.
+		await expect(compileWithoutEstree("/* note */")).resolves.toContain(
+			String.raw`{"One"}{}{"\n"}{"Two"}`,
+		);
+		// A value between two comments renders, so it is the break.
+		await expect(compileWithoutEstree(`/* a */ "X" /* b */`)).resolves.toContain(
+			String.raw`{"One"}{}{"Two"}`,
+		);
 	});
 
 	it("blocks in JSX: unwraps paragraphs in a blockquote and a list, and keeps prose outside", async () => {

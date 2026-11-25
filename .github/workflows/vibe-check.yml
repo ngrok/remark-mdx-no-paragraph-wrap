@@ -64,7 +64,7 @@ jobs:
           mise lock
           if ! git diff --exit-code mise.lock; then
             echo "::error::mise.lock is out of sync with .nvmrc / package.json#packageManager."
-            echo "::error::Run 'mise run relock' locally and commit the result."
+            echo "::error::Run 'mise lock' locally and commit the result."
             exit 1
           fi
 

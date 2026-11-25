@@ -66,8 +66,12 @@ function withoutParagraphs(children: RootContent[], separate: boolean): RootCont
 	return result;
 }
 
-// Matches source text made of only comments and white space, such as `/* note */`.
-const onlyComments = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\n]*)*$/u;
+// Matches source text made of only comments and white space, such as `/* note */`. Why
+// `(?:[^*]|\*(?!\/))`: a block comment cannot match past its first `*/`, so a value between two
+// comments does not count as a comment. Why the lookahead: a line comment runs to its line end, so
+// the match cannot split white space between `\s` and the comment, which backtracks.
+const onlyComments =
+	/^(?:\s|\/\*(?:[^*]|\*(?!\/))*\*\/|\/\/[^\n\r\u2028\u2029]*(?=[\n\r\u2028\u2029]|$))*$/u;
 
 /**
  * Check if a node renders nothing in place: a definition, an `import` or `export`, or an

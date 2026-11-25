@@ -31,18 +31,10 @@ run = "pnpm install --frozen-lockfile"
 description = "Prepare the repository after a fresh clone"
 depends = ["install"]
 
-# Refreshes mise.lock after bumping .nvmrc or package.json#packageManager.
-# After this, run `mise install` to materialize the new versions and commit
-# both the source pin and mise.lock together.
-[tasks.relock]
-description = "Refresh mise.lock to match .nvmrc and package.json#packageManager"
-run = "mise lock"
-
-# Catches drift between the committed pins and the active tools on PATH. Run
-# after switching branches, after manual tool installs, or in CI to confirm the
-# toolchain is what's expected before running builds. Reports only. Why
-# `--skip-tools`: mise installs missing tools before a task by default, so run
-# `mise run --skip-tools doctor` for a check that installs nothing.
+# Checks that the tools mise puts on PATH match the committed pins. It checks only commands that
+# run through mise, not a shell that does not activate mise. Reports only. Why `--skip-tools`:
+# mise installs missing tools before a task by default, so run `mise run --skip-tools doctor`
+# for a check that installs nothing.
 [tasks.doctor]
 description = "Verify active tools match committed pins"
 run = '''
@@ -61,7 +53,8 @@ if [ "$actual_node" != "$expected_node" ]; then
 fi
 
 # Compare active pnpm to package.json#packageManager.
-expected_pnpm=$(./scripts/package-manager-version)
+# Why Node: it reads the JSON as mise does. Why the `+` strip: Corepack allows a `+sha…` suffix.
+expected_pnpm=$(node -p 'require("./package.json").packageManager.replace(/^pnpm@/, "").split("+")[0]')
 actual_pnpm=$(pnpm --version)
 if [ "$actual_pnpm" != "$expected_pnpm" ]; then
   echo "pnpm version mismatch: active=$actual_pnpm, expected=$expected_pnpm (package.json#packageManager)" >&2
