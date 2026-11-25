@@ -5,6 +5,8 @@ set -euo pipefail
 
 MISE_VERSION="${MISE_VERSION:-v2026.11.14}"
 MISE_EXPECTED_VERSION="${MISE_VERSION#v}"
+# Why: the release tag and the asset name start with `v`, and a caller can pass the bare version.
+MISE_VERSION="v${MISE_EXPECTED_VERSION}"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -130,10 +132,10 @@ install_pinned_mise() {
   mise_base_url="https://github.com/jdx/mise/releases/download/${MISE_VERSION}"
   tmpdir="$(mktemp -d)"
 
-  cleanup() {
-    rm -rf "${tmpdir}"
-  }
-  trap cleanup EXIT
+  # Why the path in the trap, not a function that reads `tmpdir`: when a command fails under
+  # `set -e`, the trap runs after the function returns, and the local variable is gone.
+  # shellcheck disable=SC2064 # Why: expand the path now.
+  trap "rm -rf '${tmpdir}'" EXIT
 
   curl -fsSL "${mise_base_url}/${mise_asset}" -o "${tmpdir}/mise"
   curl -fsSL "${mise_base_url}/SHASUMS256.txt" -o "${tmpdir}/SHASUMS256.txt"
@@ -152,7 +154,7 @@ install_pinned_mise() {
 
   mkdir -p "${HOME}/.local/bin"
   install -m 0755 "${tmpdir}/mise" "${HOME}/.local/bin/mise"
-  cleanup
+  rm -rf "${tmpdir}"
   trap - EXIT
 }
 
