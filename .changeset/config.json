@@ -1,9 +1,9 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@3.0.5/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
   "changelog": [
     "@changesets/changelog-github",
     {
-      "repo": "ngrok-oss/remark-mdx-no-paragraph-wrap"
+      "repo": "ngrok/remark-mdx-no-paragraph-wrap"
     }
   ],
   "commit": false,

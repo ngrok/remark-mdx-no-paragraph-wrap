@@ -1,29 +1,5 @@
 {
-	"$schema": "./node_modules/oxfmt/configuration_schema.json",
-	"useTabs": true,
-	"tabWidth": 2,
-	"printWidth": 120,
-	"singleQuote": false,
-	"singleAttributePerLine": true,
-	"objectWrap": "preserve",
-	"experimentalSortImports": {},
-	"experimentalTailwindcss": {},
-	"ignorePatterns": [
-		".blog",
-		".cache",
-		".changeset",
-		".env",
-		".react-router",
-		".turbo",
-		".vercel",
-		"*.json",
-		"*.svg",
-		"*.yaml",
-		"build",
-		"bun.lockb",
-		"code-gen",
-		"dist",
-		"node_modules",
-		"public",
-	]
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "ignorePatterns": [".changeset/*.md", "CHANGELOG.md", "dist", "node_modules", "pnpm-lock.yaml"]
 }

@@ -19,7 +19,7 @@ import { visit } from "unist-util-visit";
  * not affected — they are parsed as `mdxJsxFlowElement`/`mdxJsxTextElement`
  * nodes, not mdast `paragraph` nodes, so they pass through untouched.
  */
-export function remarkMdxNoParagraphWrap() {
+export function remarkMdxNoParagraphWrap(): (tree: Root) => void {
 	return (tree: Root) => {
 		visit(tree, (node) => {
 			if (isMdxJsxElement(node)) {
@@ -37,24 +37,16 @@ function unwrapParagraphs(node: Parent) {
 	let i = 0;
 	while (i < node.children.length) {
 		const child = node.children[i];
-		if (child == null) {
-			i++;
-			continue;
-		}
-
-		if (isParagraph(child)) {
-			// Replace the paragraph with its children
+		if (child != null && isParagraph(child)) {
+			// Replace the paragraph with its children, and re-check the spliced-in nodes
 			node.children.splice(i, 1, ...child.children);
-			// Don't increment i — re-check the spliced-in nodes
-			continue;
+		} else {
+			// Recurse into non-paragraph children that have their own children
+			if (child != null && hasChildren(child)) {
+				unwrapParagraphs(child);
+			}
+			i++;
 		}
-
-		// Recurse into non-paragraph children that have their own children
-		if (hasChildren(child)) {
-			unwrapParagraphs(child);
-		}
-
-		i++;
 	}
 }
 

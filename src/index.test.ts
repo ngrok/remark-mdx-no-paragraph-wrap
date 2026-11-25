@@ -1,5 +1,5 @@
 import { compile } from "@mdx-js/mdx";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { remarkMdxNoParagraphWrap } from "./index.js";
 
@@ -23,7 +23,7 @@ async function compileWithoutPlugin(mdx: string) {
 }
 
 describe("remarkMdxNoParagraphWrap", () => {
-	test("basic: single-line JSX text has no <p> with or without plugin", async () => {
+	it("basic: single-line JSX text has no <p> with or without plugin", async () => {
 		const input = `<Foo>text</Foo>`;
 		const output = await compileWithPlugin(input);
 
@@ -31,7 +31,7 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain("<Foo>");
 	});
 
-	test("multiline: MDX wraps in <p> without plugin, plugin removes it", async () => {
+	it("multiline: MDX wraps in <p> without plugin, plugin removes it", async () => {
 		const input = `<Foo>\n\ttext\n</Foo>`;
 		const without = await compileWithoutPlugin(input);
 		const output = await compileWithPlugin(input);
@@ -41,7 +41,7 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain("<Foo>");
 	});
 
-	test("nested JSX: removes <p> from nested JSX elements", async () => {
+	it("nested JSX: removes <p> from nested JSX elements", async () => {
 		const input = `<Outer>\n\t<Inner>\n\t\ttext\n\t</Inner>\n</Outer>`;
 		const output = await compileWithPlugin(input);
 
@@ -50,7 +50,7 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain("<Inner>");
 	});
 
-	test("mixed content: preserves inline formatting without <p> wrapper", async () => {
+	it("mixed content: preserves inline formatting without <p> wrapper", async () => {
 		const input = `<Foo>\n\ttext with **bold** and \`code\`\n</Foo>`;
 		const output = await compileWithPlugin(input);
 
@@ -58,21 +58,21 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain("<Foo>");
 	});
 
-	test("normal prose: paragraphs outside JSX elements are unaffected", async () => {
+	it("normal prose: paragraphs outside JSX elements are unaffected", async () => {
 		const input = `This is a paragraph.\n\nThis is another paragraph.`;
 		const output = await compileWithPlugin(input);
 
 		expect(output).toContain("_components.p");
 	});
 
-	test("explicit <p> in JSX: not stripped because it is a JSX element, not an mdast paragraph", async () => {
+	it("explicit <p> in JSX: not stripped because it is a JSX element, not an mdast paragraph", async () => {
 		const input = `<Foo>\n\t<p className="custom">text</p>\n</Foo>`;
 		const output = await compileWithPlugin(input);
 
 		expect(output).toContain('<p className="custom">');
 	});
 
-	test("JSX with attributes: works with JSX elements that have props", async () => {
+	it("jsx with attributes: works with JSX elements that have props", async () => {
 		const input = `<PageHeader id="philosophy">\n\tPhilosophy\n</PageHeader>`;
 		const output = await compileWithPlugin(input);
 
@@ -80,7 +80,7 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain('id="philosophy"');
 	});
 
-	test("multiple JSX elements: all have paragraphs removed independently", async () => {
+	it("multiple JSX elements: all have paragraphs removed independently", async () => {
 		const input = `<Foo>\n\tHello\n</Foo>\n\n<Bar>\n\tWorld\n</Bar>`;
 		const output = await compileWithPlugin(input);
 
