@@ -9,7 +9,11 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 package_manager="$(awk -F'"' '$2 == "packageManager" { print $4; exit }' "${repo_root}/package.json")"
 
 case "${package_manager}" in
-	pnpm@*) printf '%s\n' "${package_manager#pnpm@}" ;;
+	# Why the `+` strip: Corepack allows a `+sha…` integrity suffix, which is not part of the version.
+	pnpm@*)
+		version="${package_manager#pnpm@}"
+		printf '%s\n' "${version%%+*}"
+		;;
 	*)
 		echo "remark-mdx-no-paragraph-wrap: expected package.json#packageManager to be pnpm@<version>, got ${package_manager:-<missing>}" >&2
 		exit 1

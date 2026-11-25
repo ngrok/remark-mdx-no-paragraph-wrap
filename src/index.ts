@@ -66,6 +66,9 @@ function withoutParagraphs(children: RootContent[], separate: boolean): RootCont
 	return result;
 }
 
+// Matches source text made of only comments and white space, such as `/* note */`.
+const onlyComments = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\n]*)*$/u;
+
 /**
  * Check if a node renders nothing in place: a definition, an `import` or `export`, or an
  * expression that holds only a comment.
@@ -79,7 +82,10 @@ function rendersNothing(node: RootContent): boolean {
 			return true;
 		}
 		case "mdxFlowExpression": {
-			return node.data?.estree?.body.length === 0;
+			// Why the fallback: `remark-mdx` with `addResult: false`, or another plugin, can leave out
+			// the ESTree. Then read the source text.
+			const estree = node.data?.estree;
+			return estree == null ? onlyComments.test(node.value) : estree.body.length === 0;
 		}
 		default: {
 			return false;

@@ -1,3 +1,4 @@
+import type { Root } from "mdast";
 import { compile } from "@mdx-js/mdx";
 import { describe, expect, it } from "vitest";
 
@@ -71,6 +72,28 @@ describe("remarkMdxNoParagraphWrap", () => {
 		const output = await compileWithPlugin(input);
 
 		expect(output).toContain(String.raw`<Foo>{"One"}{"\n"}{"Two"}</Foo>`);
+	});
+
+	it("separate paragraphs: keeps the break across a comment with no ESTree", async () => {
+		const input = `<Foo>\n\nOne\n\n{/* note */}\n\nTwo\n\n</Foo>`;
+		// Why: `remark-mdx` with `addResult: false` leaves out the ESTree in the same way.
+		function dropEstree() {
+			return (tree: Root): void => {
+				const foo = tree.children[0];
+				if (foo?.type === "mdxJsxFlowElement") {
+					for (const child of foo.children) {
+						if (child.type === "mdxFlowExpression") {
+							delete child.data;
+						}
+					}
+				}
+			};
+		}
+		const output = String(
+			await compile(input, { jsx: true, remarkPlugins: [dropEstree, remarkMdxNoParagraphWrap] }),
+		);
+
+		expect(output).toContain(String.raw`{"One"}{}{"\n"}{"Two"}`);
 	});
 
 	it("blocks in JSX: unwraps paragraphs in a blockquote and a list, and keeps prose outside", async () => {
