@@ -11,11 +11,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # On pull_request, github.ref is refs/pull/<n>/merge (shared shape across PRs), so
-  # key on the PR number; fall back to the ref for push/dispatch. Never cancel main so
-  # a post-merge run always completes.
-  group: vibe-check-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # On pull_request, key on the PR number, so a new push cancels the older run. Why the run ID
+  # for push and dispatch: a group keeps only one pending run, so a third push to main would
+  # cancel the second one's queued post-merge run.
+  group: vibe-check-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

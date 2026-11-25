@@ -66,6 +66,13 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain(String.raw`{"Two"}{}{"\n"}{"Three"}`);
 	});
 
+	it("separate paragraphs: keeps the break across an export", async () => {
+		const input = `<Foo>\n\nOne\n\nexport const n = 1\n\nTwo\n\n</Foo>`;
+		const output = await compileWithPlugin(input);
+
+		expect(output).toContain(String.raw`<Foo>{"One"}{"\n"}{"Two"}</Foo>`);
+	});
+
 	it("blocks in JSX: unwraps paragraphs in a blockquote and a list, and keeps prose outside", async () => {
 		const input = `Before\n\n<Foo>\n> quote one\n>\n> quote two\n\n- a\n\n- b\n</Foo>\n\nAfter`;
 		const output = await compileWithPlugin(input);

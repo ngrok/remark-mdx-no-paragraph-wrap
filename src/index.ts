@@ -67,13 +67,15 @@ function withoutParagraphs(children: RootContent[], separate: boolean): RootCont
 }
 
 /**
- * Check if a node renders nothing in place: a definition, or an expression that holds only a
- * comment.
+ * Check if a node renders nothing in place: a definition, an `import` or `export`, or an
+ * expression that holds only a comment.
  */
 function rendersNothing(node: RootContent): boolean {
 	switch (node.type) {
+		// Why `mdxjsEsm`: MDX hoists an `import` or `export` out of the rendered children.
 		case "definition":
-		case "footnoteDefinition": {
+		case "footnoteDefinition":
+		case "mdxjsEsm": {
 			return true;
 		}
 		case "mdxFlowExpression": {
