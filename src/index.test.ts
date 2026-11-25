@@ -50,6 +50,14 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain("<Inner>");
 	});
 
+	it("separate paragraphs: keeps a break between their text", async () => {
+		const input = `<Outer>\n<Foo>\n\nOne\n\nTwo\n\n</Foo>\n</Outer>`;
+		const output = await compileWithPlugin(input);
+
+		expect(output).not.toContain("_components.p");
+		expect(output).toContain(String.raw`<Foo>{"One"}{"\n"}{"Two"}</Foo>`);
+	});
+
 	it("mixed content: preserves inline formatting without <p> wrapper", async () => {
 		const input = `<Foo>\n\ttext with **bold** and \`code\`\n</Foo>`;
 		const output = await compileWithPlugin(input);

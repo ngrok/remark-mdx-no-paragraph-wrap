@@ -1,7 +1,5 @@
-import type { Node, Paragraph, Parent, Root } from "mdast";
+import type { Node, Paragraph, Parent, Root, RootContent } from "mdast";
 import type { MdxJsxFlowElement, MdxJsxTextElement } from "mdast-util-mdx-jsx";
-
-import { visit } from "unist-util-visit";
 
 /**
  * Remark plugin that automatically unwraps `<p>` (paragraph) nodes from
@@ -20,34 +18,46 @@ import { visit } from "unist-util-visit";
  * nodes, not mdast `paragraph` nodes, so they pass through untouched.
  */
 export function remarkMdxNoParagraphWrap(): (tree: Root) => void {
-	return (tree: Root) => {
-		visit(tree, (node) => {
-			if (isMdxJsxElement(node)) {
-				unwrapParagraphs(node);
-			}
-		});
+	return (tree) => {
+		unwrapParagraphs(tree, false);
 	};
 }
 
 /**
- * Recursively replace paragraph children with their own children
- * throughout the subtree of a node.
+ * Walk the subtree of a node one time, and replace each paragraph inside an MDX JSX element with
+ * its own children.
  */
-function unwrapParagraphs(node: Parent) {
-	let i = 0;
-	while (i < node.children.length) {
-		const child = node.children[i];
-		if (child != null && isParagraph(child)) {
-			// Replace the paragraph with its children, and re-check the spliced-in nodes
-			node.children.splice(i, 1, ...child.children);
-		} else {
-			// Recurse into non-paragraph children that have their own children
-			if (child != null && hasChildren(child)) {
-				unwrapParagraphs(child);
-			}
-			i++;
+function unwrapParagraphs(node: Parent, insideJsx: boolean): void {
+	const unwrap = insideJsx || isMdxJsxElement(node);
+	// Why the check: most lists hold no paragraph, so they keep their array.
+	if (unwrap && node.children.some(isParagraph)) {
+		node.children = withoutParagraphs(node.children);
+	}
+	for (const child of node.children) {
+		if (hasChildren(child)) {
+			unwrapParagraphs(child, unwrap);
 		}
 	}
+}
+
+/**
+ * Copy a list of nodes, with each paragraph replaced by its children.
+ */
+function withoutParagraphs(children: RootContent[]): RootContent[] {
+	const result: RootContent[] = [];
+	for (const [index, child] of children.entries()) {
+		if (isParagraph(child)) {
+			result.push(...child.children);
+			// Why the separator: the break between two paragraphs is the only space between their text.
+			// Without it, the text runs together, as in "OneTwo".
+			if (children[index + 1]?.type === "paragraph") {
+				result.push({ type: "text", value: "\n" });
+			}
+		} else {
+			result.push(child);
+		}
+	}
+	return result;
 }
 
 /**
@@ -55,16 +65,15 @@ function unwrapParagraphs(node: Parent) {
  * These are the auto-generated paragraph wrappers that MDX creates
  * around bare text content — not explicit `<p>` JSX elements.
  */
-function isParagraph(node: { type: string }): node is Paragraph {
+function isParagraph(node: Node): node is Paragraph {
 	return node.type === "paragraph";
 }
 
 /**
- * Type guard that checks if a node has a `children` array,
- * indicating it can be recursed into for further paragraph unwrapping.
+ * Type guard that checks if a node has a `children` array.
  */
-function hasChildren(node: { type: string; children?: unknown }): node is Parent {
-	return Array.isArray(node.children);
+function hasChildren(node: Node): node is Parent {
+	return "children" in node;
 }
 
 type MdxJsxElement = MdxJsxFlowElement | MdxJsxTextElement;
