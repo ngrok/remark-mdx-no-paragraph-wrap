@@ -31,7 +31,9 @@ function unwrapParagraphs(node: Parent, insideJsx: boolean): void {
 	const unwrap = insideJsx || isMdxJsxElement(node);
 	// Why the check: most lists hold no paragraph, so they keep their array.
 	if (unwrap && node.children.some(isParagraph)) {
-		node.children = withoutParagraphs(node.children);
+		// Why only for a JSX element: MDX puts a newline between the children of other blocks, such as
+		// a blockquote, but not between the children of a JSX element.
+		node.children = withoutParagraphs(node.children, isMdxJsxElement(node));
 	}
 	for (const child of node.children) {
 		if (hasChildren(child)) {
@@ -41,23 +43,46 @@ function unwrapParagraphs(node: Parent, insideJsx: boolean): void {
 }
 
 /**
- * Copy a list of nodes, with each paragraph replaced by its children.
+ * Copy a list of nodes, with each paragraph replaced by its children. With `separate`, put a
+ * newline between the text of two paragraphs.
  */
-function withoutParagraphs(children: RootContent[]): RootContent[] {
+function withoutParagraphs(children: RootContent[], separate: boolean): RootContent[] {
 	const result: RootContent[] = [];
-	for (const [index, child] of children.entries()) {
+	let afterParagraph = false;
+	for (const child of children) {
 		if (isParagraph(child)) {
-			result.push(...child.children);
 			// Why the separator: the break between two paragraphs is the only space between their text.
 			// Without it, the text runs together, as in "OneTwo".
-			if (children[index + 1]?.type === "paragraph") {
+			if (separate && afterParagraph) {
 				result.push({ type: "text", value: "\n" });
 			}
+			result.push(...child.children);
+			afterParagraph = true;
 		} else {
 			result.push(child);
+			afterParagraph &&= rendersNothing(child);
 		}
 	}
 	return result;
+}
+
+/**
+ * Check if a node renders nothing in place: a definition, or an expression that holds only a
+ * comment.
+ */
+function rendersNothing(node: RootContent): boolean {
+	switch (node.type) {
+		case "definition":
+		case "footnoteDefinition": {
+			return true;
+		}
+		case "mdxFlowExpression": {
+			return node.data?.estree?.body.length === 0;
+		}
+		default: {
+			return false;
+		}
+	}
 }
 
 /**
@@ -73,7 +98,7 @@ function isParagraph(node: Node): node is Paragraph {
  * Type guard that checks if a node has a `children` array.
  */
 function hasChildren(node: Node): node is Parent {
-	return "children" in node;
+	return "children" in node && Array.isArray(node.children);
 }
 
 type MdxJsxElement = MdxJsxFlowElement | MdxJsxTextElement;

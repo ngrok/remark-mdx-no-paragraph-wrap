@@ -58,6 +58,27 @@ describe("remarkMdxNoParagraphWrap", () => {
 		expect(output).toContain(String.raw`<Foo>{"One"}{"\n"}{"Two"}</Foo>`);
 	});
 
+	it("separate paragraphs: keeps the break across a definition or a comment", async () => {
+		const input = `<Foo>\n\nOne\n\n[ref]: /url\n\nTwo\n\n{/* note */}\n\nThree\n\n</Foo>`;
+		const output = await compileWithPlugin(input);
+
+		expect(output).toContain(String.raw`{"One"}{"\n"}{"Two"}`);
+		expect(output).toContain(String.raw`{"Two"}{}{"\n"}{"Three"}`);
+	});
+
+	it("blocks in JSX: unwraps paragraphs in a blockquote and a list, and keeps prose outside", async () => {
+		const input = `Before\n\n<Foo>\n> quote one\n>\n> quote two\n\n- a\n\n- b\n</Foo>\n\nAfter`;
+		const output = await compileWithPlugin(input);
+		const foo = output.slice(output.indexOf("<Foo>"), output.indexOf("</Foo>"));
+
+		expect(foo).not.toContain("_components.p");
+		// Why one newline: MDX puts it between blockquote children, so the plugin adds none.
+		expect(foo).toContain(String.raw`{"quote one"}{"\n"}{"quote two"}`);
+		expect(foo).toContain(String.raw`<_components.li>{"\n"}{"a"}{"\n"}</_components.li>`);
+		expect(output).toContain(`<_components.p>{"Before"}</_components.p>`);
+		expect(output).toContain(`<_components.p>{"After"}</_components.p>`);
+	});
+
 	it("mixed content: preserves inline formatting without <p> wrapper", async () => {
 		const input = `<Foo>\n\ttext with **bold** and \`code\`\n</Foo>`;
 		const output = await compileWithPlugin(input);
