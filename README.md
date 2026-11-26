@@ -81,11 +81,11 @@ const result = await compile(mdxSource, {
 
 The plugin operates at the **mdast (Markdown AST)** level, running as a remark transform before MDX converts to HTML (hast).
 
-1. **Walk the tree** — uses `unist-util-visit` to traverse all nodes.
+1. **Walk the tree** — visits each node one time.
 2. **Find JSX elements** — looks for `mdxJsxFlowElement` and `mdxJsxTextElement` nodes.
-3. **Unwrap paragraphs** — recursively walks each JSX element's children, replacing any `paragraph` nodes with their own children (flattening them).
+3. **Unwrap paragraphs** — inside a JSX element, at any depth, replaces each `paragraph` node with its own children. Before each paragraph after the first in a JSX element, it puts a newline, so their text does not run together.
 
-The unwrapping is recursive, so it handles nested structures correctly — paragraph nodes at any depth within JSX components are removed. Normal markdown prose outside JSX elements is unaffected.
+Normal markdown prose outside JSX elements is unaffected.
 
 Explicit `<p>` tags written in JSX (e.g., `<p className="custom">text</p>`) are **not** affected — MDX parses them as JSX element nodes, not mdast `paragraph` nodes, so they pass through untouched.
 
